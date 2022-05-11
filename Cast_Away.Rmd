@@ -1,0 +1,628 @@
+---
+title: "Cast Away"
+author: "Jack Carter"
+date: "5/5/2022"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(ggthemes)
+library(jsonlite)
+library(readxl)
+library(stringr)
+
+# gets the average NA adjusted average value for a column.   
+get_avg <- function(var) {
+  avg <- sum(var[!is.na(var)])/length(var[!is.na(var)])
+  return(avg)
+}
+
+# creates a histogram. 
+make_histogram <- function(variable) {
+  histogram <- merged_data_frame %>%
+    gather(key=measure, value = value, -c(1,2)) %>%
+    filter(measure %in% variable) %>%
+    mutate(value = as.numeric(value)) %>%
+    ggplot(aes(x=value, fill=measure)) +
+    geom_histogram(alpha=0.6,
+                   position="identity",
+                   bins=20) +
+    facet_wrap(~measure,
+               scales="free",
+               ncol=2) +
+    ggtitle("Histogram") +
+    my_theme
+  return(histogram)
+}
+
+# creates a qqplot.  
+make_qqplot <- function(variable) {
+  qqplot <- merged_data_frame %>%
+    gather(key = measure, value = value, -c(1,2)) %>%
+    filter(measure %in% variable) %>%
+    mutate(value = as.numeric(value)) %>%
+    ggplot(aes(sample=value, col=measure)) +
+    geom_qq(position="identity") +
+    geom_qq_line(position="identity") +
+    facet_wrap(~measure,
+               scales="free",
+               ncol=2) +
+    ggtitle("QQplot") +
+    my_theme
+  return(qqplot)
+}
+
+# creates a jitter plot. 
+make_jitter_plot <- function(data, x, y) {
+  scatter <- data %>%
+    ggplot(aes(x=x,
+               y=y,
+               color = x)) +
+    geom_jitter() +
+    ggtitle("") +
+    xlab("") +
+    ylab("GDP Per Capita") +
+    my_theme
+  return(scatter)
+}
+
+# creates a multiple variable scatter plot. 
+make_scatter_plot <- function(data, x, y, exclude_cols=NULL, ncol=3) {
+  scatter <- data %>%
+    gather(key = measure, value = value, -c(exclude_cols,
+                                            y)) %>%
+    filter(measure %in% x) %>%
+    mutate(measure = str_to_title(str_replace_all(measure, "_", " "))) %>%
+    mutate(measure = str_to_title(str_replace_all(measure, "Rd", "R&D"))) %>%
+    ggplot(aes(x=value,
+               y=(eval(parse(text=y))/10^3),
+               col=measure)) +
+    geom_point() +
+    geom_smooth(method='lm', 
+                formula=y~x) +
+    ggtitle("") +
+    facet_wrap(~measure,
+               ncol=ncol,
+               scales="free") +
+    xlab("") +
+    ylab("GDP Per Capita (000s)") +
+    my_theme +
+    theme(axis.ticks.x = element_blank(),
+          axis.text.x = element_blank())
+  return(scatter)
+}
+
+# my personal plot theme for data visualizations. 
+my_theme <- theme_economist_white(gray_bg = FALSE) +
+  theme(plot.title = element_text(hjust = 0.5,
+                                  vjust = 10,
+                                  size = 10,
+                                  color = "#474747"),
+        plot.margin = unit(c(1.5, 1, 1.5, 1), "cm"),
+        axis.text = element_text(size = 9,
+                                 color = "gray30"),
+        axis.text.x=element_text(vjust = -2.5),
+        axis.title.x = element_text(size = 9,
+                                    color = "gray30",
+                                    vjust = -10),
+        axis.title.y = element_text(size = 9,
+                                    color = "gray30",
+                                    vjust = 10),
+        legend.direction = "vertical", 
+        legend.position = "right",
+        legend.title = element_blank(),
+        legend.text = element_text(size = 11,
+                                   color = "gray20"),
+        legend.margin=margin(1, -15, 1, 0),
+        legend.spacing.x = unit(0.25, "cm"),
+        legend.key.size = unit(1, "cm"), 
+        legend.key.height = unit(0.75, "cm"),
+        strip.text = element_text(hjust = 0.5,
+                                  vjust = 1,
+                                  size = 10,
+                                  color = "#474747"),
+        panel.spacing = unit(2, "lines"))
+
+# sets the working directory. 
+setwd("C://Users//HUAWEI//Desktop//Projects//Cast-Away//Data")
+
+# reads in the merged data data frame. 
+merged_data_frame <- read_csv("merged_data_frame.csv") %>%
+  mutate(gov_effectivness = as.numeric(gov_effectivness))
+
+# lists the landlocked countries in our sample. 
+landlocked <- c("Afghanistan",
+                "Armenia",
+                "Austria",
+                "Azerbaijan",
+                "Burundi",
+                "Burkina Faso",
+                "Belarus",
+                "Bolivia",
+                "Botswana",
+                "Central African Republic",
+                "Switzerland",
+                "Czech Republic",
+                "Hungary",
+                "Kazakhstan",
+                "Kyrgyz Republic",
+                "Lao PDR",
+                "Lesotho",
+                "North Macedonia",
+                "Mali",
+                "Mongolia",
+                "Malawi",
+                "Niger",
+                "Nepal",
+                "Rwanda",
+                "Serbia",
+                "South Sudan",
+                "Slovak Republic",
+                "Eswatini",
+                "Chad",
+                "Tajikistan",
+                "Turkmenistan",
+                "Uganda",
+                "Uzbekistan",
+                "Kosovo",
+                "Zambia",
+                "Zimbabwe")
+
+# creates an ocean access variable for non-landlocked countries. 
+ocean_access <- list() 
+for(i in 1:length(unique(merged_data_frame$country))) {
+  ocean_access[[i]] <- if(!unique(merged_data_frame$country)[i] %in% landlocked) 1 else 0
+}
+ocean_access <- tibble(country = unique(merged_data_frame$country),
+                       ocean_access = unlist(ocean_access))
+
+# creates groups of variables to be used in transformations. 
+groupby <- c("country", "decade_half")
+ed_vars <- c("tertiary_enrollment", "secondary_enrollment")
+sci_vars <- c("rd_expenditure", "rd_researchers")
+inst_vars <- c("corruption", "gov_effectivness")
+all_vars <- c(ed_vars, sci_vars, inst_vars)
+
+```
+
+## **Summary**
+
+Landlocked countries suffer from overland transport being more costly and slower than maritime trade. Just like Tom Hanks in Cast Away, this leaves their economies more isolated and less able to thrive. This is supported with multiple regression analysis using combined data from the World Bank, Transparency International and the Worldwide Governance Indicators.
+
+&nbsp;
+
+## Results
+
+### **1) Raw Data**
+
+The raw data suggest countries with ocean access have a GDP per capita on average $11,100 higher than those who do not. But does this relationship hold up when the control data are added? 
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE, dpi=600}
+
+# makes a jitter plot of gdp per capita verses ocean 
+# access and checks for correlation. 
+raw_data <- merged_data_frame %>%
+  group_by(country) %>%
+  summarise(gdp = get_avg(gdp_per_capita)/10^3) %>% 
+  left_join(ocean_access) %>%
+  mutate(ocean_access = as.factor(ocean_access))
+
+levels(raw_data$ocean_access) <- c(" Landlocked", " Not landlocked")
+
+make_jitter_plot(data=raw_data, x=raw_data$ocean_access, y=raw_data$gdp) +
+  ggtitle("Ocean Access") +
+  ylab("GDP per capita (000s)") +
+  theme(legend.position = "none")
+
+# checks the relationship . 
+fit <- summary(lm(gdp ~ ocean_access, raw_data))
+fit$coefficients
+
+
+```
+
+&nbsp;
+
+### **2) Control Data:**
+
+The control data are taken from the World Bank (secondary enrollment, tertiary enrollment, R&D expenditure and R&D researchers), Transparency International (the Corruption Perceptions Index) and the Worldwide Governance Indicators (government effectiveness). 
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE, dpi=600}
+
+# creates a scatter plot to visualize the relationship 
+# between all the variables and gdp per capita. 
+make_scatter_plot(data=merged_data_frame, 
+                  x=all_vars, 
+                  y="gdp_per_capita",
+                  exclude_cols=c("country", "year")) +
+  ggtitle("") +
+  xlab("Value") +
+  theme(legend.position = "none")
+
+```
+
+&nbsp;
+
+### **3) Transformed Measures:**
+
+The data are transformed and combined into new index measures for education (secondary enrollment and tertiary enrollment), technology (R&D expenditure and R&D researchers) and institutions (corruption and government effectiveness). 
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE, dpi=600}
+
+# sets the working directory. 
+setwd("C://Users//HUAWEI//Desktop//Projects//Cast-Away//Data")
+
+# opens the clean data frame. 
+clean_variables_table <- read_csv("clean_variables_table.csv")
+
+# creates a list of the indexed control measures. 
+measures <- c("ocean_access", "education", "technology", "institutions")
+
+# creates a scatter plot to visualize the relationship 
+# between the adjusted control measures and gdp per capita. 
+make_scatter_plot(data=clean_variables_table, 
+                  x=measures, 
+                  y="gdp_per_capita",
+                  exclude_cols=c("country", "decade_half"),
+                  ncol=2) +
+  ggtitle("") +
+  ylab("Log GDP per capita (z score)") +
+  xlab("Z score") +
+  theme(legend.position = "none")
+
+```
+
+&nbsp;
+
+### **4) Final Results:**
+
+The results show a statistically significant relationship for each measure, with ocean access increasing GDP per capita by an average of 23.6 percent (with a p-value of 0.0000788). 
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE, dpi=600}
+
+# visualizes the regression analysis. 
+clean_variables_table %>%
+  gather(key = measure, value = value, -c("country",
+                                          "decade_half",
+                                          "gdp_per_capita")) %>%
+  mutate(measure = str_to_title(str_replace_all(measure, "_", " "))) %>%
+  ggplot(aes(x=value,
+             y=gdp_per_capita/10^3,
+             col=measure)) +
+  geom_point() +
+  geom_smooth(method='lm', 
+              formula=y~x) +
+  ggtitle("Multiple Regression") +
+  xlab("Z score") +
+  ylab("GDP Per Capita (z score)") +
+  my_theme +
+  theme(axis.ticks.x = element_blank(),
+        axis.text.x = element_blank()) +
+  guides(color=guide_legend(override.aes=list(fill=NA)))
+
+# creates the variable for the regression analysis. 
+y <- clean_variables_table$gdp_per_capita
+ocean_access <- clean_variables_table$ocean_access
+education <- clean_variables_table$education
+technology <- clean_variables_table$technology
+institutions <- clean_variables_table$institutions
+
+# fits the regression model. 
+fit <- lm(y~ocean_access+education+technology+institutions)
+summary(fit)
+
+```
+
+&nbsp;
+
+## **Disclaimer**
+
+This is not proof that being landlocked negatively affects economic development. It remains entirely possible that another factor not accounted for here is causing the apparent difference we see between landlocked and not landlocked countries. Yet while this remains possible, the economics literature suggests education, technology and institutions are the most reliable causal factors behind long term economic growth. We can therefore be relatively confident in the results obtained here, even if they cannot be taken as undeniable proof. 
+
+&nbsp; 
+
+## **Method**
+
+### **1) Reconcile Data Sets:**
+
+Data from the World Bank, Transparency International and Worldwide Governance Indicators are reconciled by identifying and changing common yet non-identical country names.
+
+---EXAMPLE CODE SNIPET---
+
+```{r, echo = TRUE, message = FALSE, warning = FALSE, dpi=600}
+
+# checks if any the data's country names appear as parts 
+# of those in the TI list.  
+get_data_non_idenitcal <- function(data, object) {
+  scores <- list()
+  for(i in 1:length(object)) {
+    scores[[i]] <- if(mean(str_detect(object[i], data))>0) TRUE else FALSE
+  }
+  return(object[unlist(scores)])
+}
+
+```
+
+&nbsp;
+
+### **2) Add Padded NA values:**
+
+Padded NA values are added for the years that aren't available in the Transparency International data during the 2010s (as some of the countries were not included prior to 2012).
+
+---EXAMPLE CODE SNIPET---
+
+```{r, echo = TRUE, message = FALSE, warning = FALSE, dpi=600}
+
+# creates new data for each country in the 
+# non identical list given.
+create_country_data <- function(year, countries) {
+  country_data <- list()
+  for(i in 1:length(unique(countries))) {
+    country_data[[i]] <- tibble(country = countries[i],
+                                year = year,
+                                col = NA)
+  }
+  return(rbind_pages(country_data))
+}
+
+```
+
+&nbsp;
+
+### **3) Remove High NA Entries:**
+
+Countries with a high number of NAs across multiple measures for each year in the 2010s are identified and removed. 
+
+---EXAMPLE CODE SNIPET---
+
+```{r, echo = TRUE, message = FALSE, warning = FALSE, dpi=600}
+
+# checks for countries where most of the values are NA.  
+check_na_values <- list()
+for(i in 1:length(merged_data_frame$country)) {
+  check_na_values[[i]] <- sum(is.na(merged_data_frame[i,4:ncol(merged_data_frame)]))>=ncol(merged_data_frame)-4
+}
+view(merged_data_frame[unlist(check_na_values),])
+
+```
+
+&nbsp;
+
+### **4) List Landlocked Countries:**
+
+A list of landlocked countries is created by checking the countries in the combined data set on Google Maps.
+
+---EXAMPLE CODE SNIPET---
+
+```{r, echo = TRUE, message = FALSE, warning = FALSE, dpi=600}
+
+# lists the landlocked countries in our sample. 
+landlocked <- c("Afghanistan",
+                "Armenia",
+                "Austria",
+                "...",
+                "Zambia",
+                "Zimbabwe")
+
+# creates an ocean access variable for non-landlocked countries. 
+ocean_access <- list() 
+for(i in 1:length(unique(merged_data_frame$country))) {
+  ocean_access[[i]] <- if(!unique(merged_data_frame$country)[i] %in% landlocked) 1 else 0
+}
+ocean_access <- tibble(country = unique(merged_data_frame$country),
+                       ocean_access = unlist(ocean_access))
+
+```
+
+&nbsp;
+
+### **5) Convert GDP Per Capita:**
+
+GDP per capita is converted to its log values to reduce the large variances between the richest countries and the rest. 
+
+---EXAMPLE CODE SNIPET---
+
+```{r, echo = TRUE, message = FALSE, warning = FALSE, dpi=600}
+
+# transforms gdp per capita into its log values. 
+merged_data_frame$log_gdp_per_capita <- log(merged_data_frame$gdp_per_capita)
+
+```
+
+&nbsp;
+
+### **6) Check Distributions**
+
+The distributions for each measure are checked with a histogram and qqplot to see if they follow the normal distribution. 
+
+```{r, echo = TRUE, message = FALSE, warning = FALSE, dpi=600}
+
+# creates a histogram. 
+make_histogram <- function(variable) {
+  histogram <- merged_data_frame %>%
+    gather(key=measure, value = value, -c(1,2)) %>%
+    filter(measure %in% variable) %>%
+    mutate(value = as.numeric(value)) %>%
+    ggplot(aes(x=value, fill=measure)) +
+    geom_histogram(alpha=0.6,
+                   position="identity",
+                   bins=20) +
+    facet_wrap(~measure,
+               scales="free",
+               ncol=2) +
+    ggtitle("Histogram") +
+    my_theme
+  return(histogram)
+}
+
+# creates a qqplot.  
+make_qqplot <- function(variable) {
+  qqplot <- merged_data_frame %>%
+    gather(key = measure, value = value, -c(1,2)) %>%
+    filter(measure %in% variable) %>%
+    mutate(value = as.numeric(value)) %>%
+    ggplot(aes(sample=value, col=measure)) +
+    geom_qq(position="identity") +
+    geom_qq_line(position="identity") +
+    facet_wrap(~measure,
+               scales="free",
+               ncol=2) +
+    ggtitle("QQplot") +
+    my_theme
+  return(qqplot)
+}
+
+```
+
+&nbsp;
+
+### **7) Transform Variables**
+
+The variables that do not align perfectly with the normal distribution are transformed and re-checked with a histogram and qqplot. 
+
+```{r, echo = TRUE, message = FALSE, warning = FALSE, dpi=600}
+
+# transforms the variables. 
+merged_data_frame$secondary_enrollment <- merged_data_frame$secondary_enrollment**(1/0.355)
+merged_data_frame$tertiary_enrollment <- merged_data_frame$tertiary_enrollment**(1/2)
+
+```
+
+&nbsp;
+
+### **8) Z Score Transformation**
+
+The data are transformed to their z score values so differences can be compared accross multiple distributions. 
+
+```{r, echo = TRUE, message = FALSE, warning = FALSE, dpi=600}
+
+# gets the z scores for each data distribution given. 
+get_z_scores <- function(data) {
+  mean <- mean(data[!is.na(data)])
+  sigma <- sd(data[!is.na(data)])
+  z_scores <- list()
+  for(i in 1:length(data)) {
+    z_scores[i] <- if(is.na(data[i])) NA else (data[i] - mean) / sigma
+  }
+  return(unlist(z_scores))
+}
+
+```
+
+&nbsp;
+
+### **9) Check Outliers**
+
+Outliers are checked by determining whether any of the values lie three or more standard deviations away from the mean. 
+
+```{r, echo = TRUE, message = FALSE, warning = FALSE, dpi=600}
+
+# checks for outliers of over 3 standard deviations. 
+check_outliers <- function(vars) {
+  outliers <- list()
+  for(i in 1:length(vars)) {
+    outliers[[i]] <- sum(abs(!is.na(merged_data_frame[,vars][i]))>3)
+    print(paste0(outliers[[i]], " --- ", vars[i], " outliers"))
+  }
+}
+
+```
+
+&nbsp;
+
+### **10) Create New Measures**
+
+New measures are created by converting the relevant z score distributions into a tidy table before calculating the average for each country. Two averages are calculated for the years 2010-2014 and 2015-2019, doubling the available observations. Even if a single ten year average is taken, a statistically significant relationship between ocean access and GDP per capita is still present. 
+
+```{r, echo = TRUE, message = FALSE, warning = FALSE, dpi=600}
+
+# creates a tidy data frame of the z scores for 2 variables. 
+get_tidy_z_scores <- function(vars) {
+  df <- merged_data_frame[,c(groupby, vars)] %>%
+    group_by(country, decade_half) %>%
+    summarise(var_1 = get_avg(eval(parse(text=vars[1]))),
+              var_2 = get_avg(eval(parse(text=vars[2]))))
+  colnames(df) <- c(groupby,vars)
+  final_df <- df %>%
+    gather(key = measure, value = value, -c(1,2))
+  return(final_df)
+}
+
+# gets the average z score for 2 variables. 
+get_avg_z_scores <- function(z_scores) {
+  df <- eval(parse(text=z_scores)) %>%
+    group_by(country, decade_half) %>%
+    summarise(col=sum(value[!is.na(value)]/length(value[!is.na(value)])))
+  colnames(df)[3] <- z_scores
+  return(df)
+}
+
+```
+
+&nbsp;
+
+### **11) Check and Fill NAs**
+
+Any remaining NA values for the resulting measures (taking a five year average significantly helps in eliminating missing data problems) are checked and filled based on the average for other countries with a similar level of GDP per capita. 
+
+```{r, echo = TRUE, message = FALSE, warning = FALSE, dpi=600}
+
+# imputes missing values by taking the average for 
+# countries with a similar gdp per capita. 
+fill_NAs <- function(measure, vars) {
+  impute_values <- final_df %>%
+    mutate(gdp_per_capita = round(gdp_per_capita)) %>%
+    group_by(gdp_per_capita) %>%
+    summarise(avg = mean(eval(parse(text=measure))))
+  NAs <- final_df[final_df[,measure]==0,]
+  imputations <- list()
+  for(i in 1:nrow(NAs)) {
+    imputations[[i]] <- impute_values$avg[which(impute_values["gdp_per_capita"] == round(NAs$gdp_per_capita[i]))]
+  }
+  final_df[pull(final_df[measure])==0,][measure] <- unlist(imputations)
+  return(final_df)
+}
+
+```
+
+&nbsp;
+
+### **12) Fit the Regression Model**
+
+A regression model is fitted to determine whether the relationship between ocean access and GDP per capita holds up. 
+
+```{r, echo = TRUE, message = FALSE, warning = FALSE, dpi=600}
+
+# creates the variables for the regression analysis. 
+y <- clean_variables_table$gdp_per_capita
+ocean_access <- clean_variables_table$ocean_access
+education <- clean_variables_table$education
+technology <- clean_variables_table$technology
+institutions <- clean_variables_table$institutions
+
+# fits the regression model. 
+fit <- lm(y~ocean_access+education+technology+institutions)
+
+```
+
+&nbsp;
+
+## **Sources**
+
+- OECD (2022) https://www.oecd.org/ocean/topics/ocean-economy/
+
+- Transaprency International (2022) https://www.transparency.org/en/
+
+- WGI (2022) http://info.worldbank.org/governance/wgi/
+
+- World Bank (2008) https://www.worldbank.org/en/news/feature/2008/06/16/landlocked-countries-higher-transport-costs-delays-less-trade
+
+- World Bank (2022) https://data.worldbank.org/
+
+&nbsp;
+&nbsp;
+&nbsp;
