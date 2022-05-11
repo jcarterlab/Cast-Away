@@ -1,6 +1,6 @@
 # Cast-Away
 
-Seeks to determine the affect of being landlocked on economic development through multiple regression analysis.
+Landlocked countries suffer from overland transport being more costly and slower than maritime trade. Just like Tom Hanks in Cast Away, this leaves their economies more isolated and less able to thrive. This is supported with multiple regression analysis using combined data from the World Bank, Transparency International and the Worldwide Governance Indicators.
 
 <br/>
 
