@@ -199,7 +199,7 @@ Landlocked countries suffer from overland transport being more costly and slower
 
 ### **1) Raw Data**
 
-The raw data suggest countries with ocean access have a GDP per capita on average $11,100 higher than those who do not. But does this relationship hold up when the control data are added? 
+The raw data suggest countries with ocean access on average have an $11,100 higher GDP per capita than those who do not. But does this relationship hold up when the control data are added?
 
 ```{r, echo = FALSE, message = FALSE, warning = FALSE, dpi=600}
 
