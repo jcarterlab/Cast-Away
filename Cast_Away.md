@@ -18,8 +18,8 @@ Indicators.
 
 ### **1) Raw Data**
 
-The raw data suggest countries with ocean access have
-on average $11,100 higher GDP per capita than those who do not. But does this
+The raw data suggest countries with ocean access have an on 
+average $11,100 higher GDP per capita than those who do not. But does this
 relationship hold up when the control data are added?
 
 ![](Cast_Away_files/figure-gfm/unnamed-chunk-1-1.png)<!-- -->
