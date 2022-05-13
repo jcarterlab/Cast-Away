@@ -54,9 +54,9 @@ government effectiveness).
 
 ### **4) Final Results:**
 
-The results show a statistically significant relationship for each
-measure, with ocean access increasing GDP per capita by an average of
-23.6 percent (with a p-value of 0.0000788).
+The results show a statistically significant relationship for all
+measures, with ocean access increasing GDP per capita by 23.6 percent 
+(with a p-value of 0.0000788).
 
 ![](Cast_Away_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
 
