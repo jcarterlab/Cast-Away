@@ -280,7 +280,9 @@ make_scatter_plot(data=clean_variables_table,
 
 ### **4) Final Results:**
 
-The results show a statistically significant relationship for each measure, with ocean access increasing GDP per capita by an average of 23.6 percent (with a p-value of 0.0000788). 
+The results show a statistically significant relationship for all
+measures, with ocean access increasing GDP per capita by 23.6 percent 
+(with a p-value of 0.0000788).
 
 ```{r, echo = FALSE, message = FALSE, warning = FALSE, dpi=600}
 
