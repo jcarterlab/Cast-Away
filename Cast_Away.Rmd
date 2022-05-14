@@ -323,7 +323,14 @@ summary(fit)
 
 ## **Disclaimer**
 
-This is not proof that being landlocked negatively affects economic development. It remains entirely possible that another factor not accounted for here is causing the apparent difference we see between landlocked and not landlocked countries. Yet while this remains possible, the economics literature suggests education, technology and institutions are the most reliable causal factors behind long term economic growth. We can therefore be relatively confident in the results obtained here, even if they cannot be taken as undeniable proof. 
+The data above are not proof that being landlocked negatively affects economic
+development. It remains entirely possible that another factor not
+accounted for here is causing the apparent difference we see between
+landlocked and not landlocked countries. Yet while this remains
+possible, the economics literature suggests education, technology and
+institutions are the most reliable causal factors behind long term
+economic growth. We can therefore be relatively confident in the results
+obtained here, even if they cannot be taken as undeniable proof.
 
 &nbsp; 
 
