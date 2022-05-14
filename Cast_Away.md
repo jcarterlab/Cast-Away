@@ -86,7 +86,7 @@ measures, with ocean access increasing GDP per capita by 23.6 percent
 
 ## **Disclaimer**
 
-This is not proof that being landlocked negatively affects economic
+The data above are not proof that being landlocked negatively affects economic
 development. It remains entirely possible that another factor not
 accounted for here is causing the apparent difference we see between
 landlocked and not landlocked countries. Yet while this remains
